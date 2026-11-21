@@ -26,6 +26,8 @@ avaliação offline**: toda mudança no recomendador precisa ser medida pelo rel
   `hash()` nem iteração sobre `set` para ordenar resultados.
 - Se a mudança altera números da avaliação, rode `make evaluate` e commite o relatório. O CI
   falha se ele divergir.
+- Nada fora de `saas/` conhece nomes de campo do SaaS; mudou o contrato dele, mude só a ACL.
+  Dados de tenants diferentes nunca compartilham repositório nem recomendador.
 - Decisão de arquitetura nova vira ADR em `docs/adr/` (Contexto / Decisão / Consequências /
   Alternativas).
 - Commits em Conventional Commits, mensagem via arquivo (`git commit -F`).
@@ -50,6 +52,7 @@ make up | up-all | ps | logs | seed | down | clean   # docker-compose (perfis co
 | `src/lesson_recommender/recommender/` | Conteúdo, colaborativo de referência, candidatas, híbrido, explicações |
 | `src/lesson_recommender/evaluation/` | Split temporal, métricas, baselines, runner, relatório |
 | `src/lesson_recommender/graph/` | Cypher, carga, repositório Neo4j |
+| `src/lesson_recommender/saas/` | Integração com o SaaS: payloads, ACL, cliente API v1, JWT, tenants, sync |
 | `src/lesson_recommender/artifacts/` | Porta de storage (local, S3/MinIO) e publicação por data |
 | `tests/factories.py` | Estúdio mínimo, com um caso por regra |
 | `docs/` | design doc, ADRs, roteiro do núcleo |

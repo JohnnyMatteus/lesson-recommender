@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 
 from lesson_recommender.adapters.memory_repository import InMemoryRepository
@@ -25,6 +25,7 @@ from lesson_recommender.evaluation.metrics import (
     recall_at_k,
 )
 from lesson_recommender.evaluation.split import temporal_split
+from lesson_recommender.evaluation.tuning import TuningResult, tune_weights
 from lesson_recommender.recommender.content import ContentModel
 from lesson_recommender.recommender.hybrid import HybridRecommender, Weights
 
@@ -86,6 +87,7 @@ class EvaluationReport:
     relevant_items: int
     results: list[ModelResult]
     intervals: list[ConfidenceInterval]
+    tuning: TuningResult | None = None
 
 
 def _score_model(
@@ -130,12 +132,27 @@ def paired_bootstrap(
 
 
 def evaluate(
-    dataset: Dataset, embedder: EmbeddingProvider, config: EvaluationConfig | None = None
+    dataset: Dataset,
+    embedder: EmbeddingProvider,
+    config: EvaluationConfig | None = None,
+    *,
+    tune: bool = False,
 ) -> EvaluationReport:
+    """Com `tune`, os pesos do híbrido saem de um recorte de validação interno ao treino."""
     config = config or EvaluationConfig()
     split = temporal_split(dataset, test_fraction=config.test_fraction)
     if not split.relevant:
         raise ValueError("nenhum aluno com descobertas no período de teste")
+    tuning = None
+    if tune:
+        tuning = tune_weights(
+            split.train,
+            embedder,
+            policy=EVALUATION_POLICY,
+            k=max(config.ks),
+            neighbors=config.neighbors,
+        )
+        config = replace(config, weights=tuning.best)
     repository = InMemoryRepository(split.train)
     content = ContentModel(
         embedder, repository.list_lessons(), repository.modalities(), repository.instructors()
@@ -205,4 +222,5 @@ def evaluate(
         relevant_items=sum(len(items) for items in split.relevant.values()),
         results=results,
         intervals=intervals,
+        tuning=tuning,
     )

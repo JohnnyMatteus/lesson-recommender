@@ -37,7 +37,7 @@ dataset: ## Gera data/dataset.json (seed 42)
 	$(PYTHON) -m lesson_recommender.cli generate --output data/dataset.json
 
 evaluate: dataset ## Avaliação offline: regenera reports/avaliacao.md
-	$(PYTHON) -m lesson_recommender.cli evaluate --dataset data/dataset.json --output reports/avaliacao.md
+	$(PYTHON) -m lesson_recommender.cli evaluate --dataset data/dataset.json --output reports/avaliacao.md --tune
 
 run: dataset ## API local com repositório em memória
 	$(PYTHON) -m uvicorn --factory lesson_recommender.bootstrap:create_production_app --port 8000

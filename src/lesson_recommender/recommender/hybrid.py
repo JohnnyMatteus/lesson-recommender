@@ -18,8 +18,8 @@ MAX_K = 50
 
 @dataclass(frozen=True, slots=True)
 class Weights:
-    content: float = 0.5
-    collaborative: float = 0.4
+    content: float = 0.3
+    collaborative: float = 0.6
     popularity: float = 0.1
 
     def __post_init__(self) -> None:

@@ -102,7 +102,7 @@ Exemplo de resposta (resumido):
 {
   "student_id": "aluno-0007",
   "k": 5,
-  "weights": {"content": 0.5, "collaborative": 0.4, "popularity": 0.1},
+  "weights": {"content": 0.3, "collaborative": 0.6, "popularity": 0.1},
   "items": [{
     "lesson": {"id": "aula-027", "title": "Hatha Yoga intermediário · 12:00", "schedule": "quarta 12:00", "seats_left": 12},
     "score": 0.852,
@@ -125,7 +125,7 @@ principais:
 |---|---|---|
 | `LR_REPOSITORY_BACKEND` | `memory` | `memory` (dataset JSON) ou `neo4j` |
 | `LR_EMBEDDINGS_BACKEND` | `hashing` | `sentence-transformers` exige `pip install '.[sentence-transformers]'` |
-| `LR_WEIGHT_CONTENT` / `_COLLABORATIVE` / `_POPULARITY` | 0,5 / 0,4 / 0,1 | Pesos do híbrido |
+| `LR_WEIGHT_CONTENT` / `_COLLABORATIVE` / `_POPULARITY` | 0,3 / 0,6 / 0,1 | Pesos do híbrido |
 | `LR_NEIGHBORS` | 30 | Vizinhos no colaborativo |
 | `LR_ARTIFACTS_BACKEND` | `local` | `s3` publica no MinIO ou S3 (`LR_S3_ENDPOINT_URL`) |
 
@@ -158,9 +158,18 @@ make test             # tudo
 | [0006](docs/adr/0006-dataset-sintetico-com-padroes-plantados.md) | Dataset sintético reprodutível com padrões plantados |
 | [0007](docs/adr/0007-combinacao-hibrida-linear.md) | Combinação linear com normalização por pedido e pesos configuráveis |
 | [0008](docs/adr/0008-artefatos-do-modelo-no-minio.md) | Artefatos do modelo (índice de embeddings e relatórios) no S3/MinIO atrás de uma porta |
+| [0009](docs/adr/0009-ingestao-do-saas-por-api-v1.md) | Ingestão do SaaS por API v1 com credencial de serviço, ACL e um recomendador por tenant |
 
 O núcleo, a métrica de avaliação, está explicado para entrevista em
 [docs/roteiros/metrica-de-avaliacao.md](docs/roteiros/metrica-de-avaliacao.md).
+
+## Integração com o SaaS
+
+Com `LR_SAAS_API_URL` definido, a API lê aulas, alunos e reservas reais de cada estúdio pela
+API v1 do SaaS e serve `GET /tenants/{tenant}/students/{id}/recommendations?k=`, protegido
+pelo JWT do Keycloak (claim `tenant`), com isolamento por estúdio, aluno só vendo as próprias
+recomendações e CORS para o front. Contrato, erros e variáveis em
+[docs/integracao-saas.md](docs/integracao-saas.md).
 
 ## Observabilidade
 
@@ -180,17 +189,19 @@ Detalhes na seção 8 do design doc.
   caminho é pré-computar vizinhos em lote.
 - **Mundo sintético:** os números valem para este dataset. O que transfere para um estúdio real
   é o protocolo de avaliação.
-- **Pesos escolhidos a priori:** não ajustados no teste, para não contaminá-lo. O ajuste fica
-  para quando houver um recorte de validação.
-- **A lotação é lida no pedido**, a partir da carga em lote. Sem integração de eventos, pode
-  estar defasada.
+- **Pesos ajustados na validação, não no teste:** a grade é avaliada num recorte interno ao
+  treino (`evaluate --tune`). No teste o resultado ficou um pouco abaixo dos pesos a priori
+  (NDCG@10 0.404 contra 0.413), dentro do ruído: o que vale é o procedimento, não o número.
+- **A lotação vem da sincronização com o SaaS** (a cada 5 minutos), então pode estar
+  defasada nesse intervalo.
 
 ## Próximos passos
 
-1. Recorte de validação temporal para ajustar pesos e vizinhos.
+1. Ajustar também o número de vizinhos no recorte de validação.
 2. Protocolo de cold start e métricas por segmento (nível, restrições).
 3. Medir sentence-transformers e carregar o índice publicado no MinIO na subida da API.
-4. Ingestão de eventos do `saas-multitenant` (reservas e ocupação) em vez de carga em lote.
+4. Ingestão por eventos do `saas-multitenant` no lugar do pull por API (ADR 0009), e cold start
+   para aluno sem reserva.
 5. Vizinhos pré-computados com GDS, cache por aluno e circuit breaker no Neo4j.
 6. Diversidade (MMR) e limite de exposição por aula; A/B online com guardrails.
 7. Validar de ponta a ponta o compose final, com MinIO e healthcheck do Neo4j via HTTP. A

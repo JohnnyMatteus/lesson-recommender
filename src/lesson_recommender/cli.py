@@ -71,7 +71,7 @@ def _evaluate(args: argparse.Namespace) -> None:
         weights=settings.weights(),
     )
     dataset = load_dataset(args.dataset)
-    report = evaluate(dataset, embedder, config)
+    report = evaluate(dataset, embedder, config, tune=args.tune)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     markdown = render_markdown(report)
     args.output.write_text(markdown)
@@ -131,6 +131,11 @@ def build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--k", type=int, nargs="+", default=[5, 10])
     ev.add_argument("--test-fraction", type=float, default=0.2)
     ev.add_argument("--seed", type=int, default=42)
+    ev.add_argument(
+        "--tune",
+        action="store_true",
+        help="escolhe os pesos do híbrido num recorte de validação (sem usar o teste)",
+    )
     ev.add_argument(
         "--publish",
         action="store_true",
