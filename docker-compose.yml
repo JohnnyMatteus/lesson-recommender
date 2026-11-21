@@ -1,7 +1,7 @@
 # Ambiente local do lesson-recommender.
 #
 # Perfis:
-#   core          -> Neo4j, MinIO (artefatos do modelo), carga do dataset e API
+#   core          -> Neo4j, Redis (cache), MinIO (artefatos do modelo), carga do dataset e API
 #   observability -> Jaeger (traces OTLP) e Prometheus (métricas da API)
 #
 # Senhas e chaves abaixo são apenas de desenvolvimento (dev-only-*). Variáveis em .env.example.
@@ -46,6 +46,25 @@ services:
       resources:
         limits:
           memory: 2g
+
+  redis:
+    image: redis:7.4.6-alpine
+    profiles: [core]
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${LR_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks: [lesson-recommender]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 128m
 
   minio:
     image: minio/minio:RELEASE.2025-04-03T14-56-28Z
@@ -109,12 +128,16 @@ services:
     environment:
       <<: *app-env
       LR_REPOSITORY_BACKEND: neo4j
+      LR_REDIS_URL: redis://redis:6379/0
+      LR_RECOMMENDATIONS_CACHE_TTL_SECONDS: ${LR_RECOMMENDATIONS_CACHE_TTL_SECONDS:-120}
       LR_OTEL_EXPORTER_OTLP_ENDPOINT: ${LR_OTEL_EXPORTER_OTLP_ENDPOINT:-}
     ports:
       - "${LR_API_PORT:-8000}:8000"
     networks: [lesson-recommender]
     depends_on:
       neo4j:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       seed:
         condition: service_completed_successfully
@@ -162,6 +185,7 @@ services:
 
 volumes:
   neo4j-data:
+  redis-data:
   minio-data:
   prometheus-data:
 
