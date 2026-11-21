@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Dados gerados localmente
+data/
+
+# Ambiente
+.env
+config.local.yaml
+
+# Editores e SO
+.idea/
+.vscode/
+.DS_Store
