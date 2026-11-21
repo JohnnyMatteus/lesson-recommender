@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from pathlib import Path
 
-from pydantic import Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from lesson_recommender.recommender.hybrid import Weights
@@ -19,6 +19,11 @@ class RepositoryBackend(StrEnum):
 class ArtifactsBackend(StrEnum):
     LOCAL = "local"
     S3 = "s3"
+
+
+class TenantCredential(BaseModel):
+    client_id: str
+    client_secret: SecretStr
 
 
 class Settings(BaseSettings):
@@ -48,6 +53,19 @@ class Settings(BaseSettings):
     s3_access_key: str = "dev-only-minio"
     s3_secret_key: SecretStr = SecretStr("dev-only-change-me")
     s3_region: str = "us-east-1"
+
+    # Integração com o SaaS (ADR 0009). Sem `saas_api_url`, a API serve só o dataset sintético.
+    saas_api_url: str | None = None
+    saas_token_url: str | None = None
+    saas_issuer: str = "http://localhost:8080/realms/estudios"
+    saas_audience: str = "studio-api"
+    saas_jwks_url: str | None = None
+    saas_jwt_public_key_file: Path | None = None
+    saas_tenants: dict[str, TenantCredential] = Field(default_factory=dict)
+    saas_refresh_seconds: int = Field(default=300, gt=0)
+    saas_lookback_days: int = Field(default=90, gt=0)
+    saas_lookahead_days: int = Field(default=14, ge=0)
+    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
 
     log_level: str = "INFO"
     otel_service_name: str = "lesson-recommender"

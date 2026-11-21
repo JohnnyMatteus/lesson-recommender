@@ -17,3 +17,15 @@ class InvalidRequestError(RecommenderError):
 
 class ConfigurationError(RecommenderError):
     """Configuração inválida ou dependência opcional ausente."""
+
+
+class IntegrationError(RecommenderError):
+    """Falha ao falar com o SaaS (rede, credencial ou resposta fora do contrato)."""
+
+
+class AuthenticationError(RecommenderError):
+    """Token ausente, inválido ou expirado."""
+
+
+class ForbiddenError(RecommenderError):
+    """Token válido, mas sem direito sobre o recurso pedido."""
