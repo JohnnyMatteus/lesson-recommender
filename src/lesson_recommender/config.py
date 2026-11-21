@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     saas_lookahead_days: int = Field(default=14, ge=0)
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
 
+    redis_url: str | None = None
+    recommendations_cache_ttl_seconds: int = Field(default=120, gt=0)
+
     log_level: str = "INFO"
     otel_service_name: str = "lesson-recommender"
     otel_exporter_otlp_endpoint: str | None = None

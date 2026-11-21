@@ -10,25 +10,38 @@ from typing import Annotated
 from fastapi import APIRouter, FastAPI, Path, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from opentelemetry import trace
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from lesson_recommender.api.render import build_response
-from lesson_recommender.api.schemas import ErrorResponse, RecommendationsResponse
+from lesson_recommender.api.schemas import (
+    BookingIn,
+    BookingOut,
+    ErrorResponse,
+    RecommendationsResponse,
+    RejectionResponse,
+)
+from lesson_recommender.application.booking import BookLesson
 from lesson_recommender.domain.errors import (
     AuthenticationError,
+    BookingRejectedError,
     ForbiddenError,
     IntegrationError,
     InvalidRequestError,
+    LessonNotFoundError,
     StudentNotFoundError,
 )
-from lesson_recommender.observability import REQUEST_LATENCY, REQUESTS
-from lesson_recommender.recommender.hybrid import MAX_K, HybridRecommender
+from lesson_recommender.observability import BOOKINGS, REQUEST_LATENCY, REQUESTS
+from lesson_recommender.recommender.hybrid import MAX_K
+from lesson_recommender.recommender.ports import Recommender
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 def create_app(
-    recommender: HybridRecommender | None = None,
+    recommender: Recommender | None = None,
+    book_lesson: BookLesson | None = None,
     *,
     tenant_router: APIRouter | None = None,
     cors_origins: Sequence[str] = (),
@@ -76,6 +89,15 @@ def create_app(
     async def student_not_found(_: Request, error: StudentNotFoundError) -> JSONResponse:
         return JSONResponse(status_code=404, content={"detail": str(error)})
 
+    @app.exception_handler(LessonNotFoundError)
+    async def lesson_not_found(_: Request, error: LessonNotFoundError) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(error)})
+
+    @app.exception_handler(BookingRejectedError)
+    async def booking_rejected(_: Request, error: BookingRejectedError) -> JSONResponse:
+        BOOKINGS.labels("rejected").inc()
+        return JSONResponse(status_code=409, content={"detail": str(error), "reason": error.reason})
+
     @app.exception_handler(InvalidRequestError)
     async def invalid_request(_: Request, error: InvalidRequestError) -> JSONResponse:
         return JSONResponse(status_code=422, content={"detail": str(error)})
@@ -119,6 +141,33 @@ def create_app(
             k: Annotated[int, Query(ge=1, le=MAX_K, description="Quantidade de aulas")] = 10,
         ) -> RecommendationsResponse:
             return build_response(recommender, student_id, k)
+
+        if book_lesson is not None:
+
+            @app.post(
+                "/students/{student_id}/bookings",
+                status_code=201,
+                response_model=BookingOut,
+                responses={404: {"model": ErrorResponse}, 409: {"model": RejectionResponse}},
+                tags=["reservas"],
+            )
+            def book(
+                student_id: Annotated[str, Path(min_length=1, max_length=64)], body: BookingIn
+            ) -> BookingOut:
+                with tracer.start_as_current_span("book_lesson") as span:
+                    span.set_attribute("student.id", student_id)
+                    span.set_attribute("lesson.id", body.lesson_id)
+                    booking = book_lesson.execute(student_id, body.lesson_id)
+                BOOKINGS.labels("created").inc()
+                logger.info(
+                    "reserva registrada",
+                    extra={"student_id": student_id, "lesson_id": body.lesson_id},
+                )
+                return BookingOut(
+                    student_id=booking.student_id,
+                    lesson_id=booking.lesson_id,
+                    booked_at=booking.booked_at,
+                )
 
     if tenant_router is not None:
         app.include_router(tenant_router)

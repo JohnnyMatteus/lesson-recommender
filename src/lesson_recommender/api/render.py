@@ -8,13 +8,14 @@ from opentelemetry import trace
 
 from lesson_recommender.api.schemas import RecommendationOut, RecommendationsResponse
 from lesson_recommender.observability import EMPTY_RECOMMENDATIONS, RECOMMENDATIONS
-from lesson_recommender.recommender.hybrid import HybridRecommender, Recommendation
+from lesson_recommender.recommender.hybrid import Recommendation
+from lesson_recommender.recommender.ports import Recommender
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
-def _dominant_signal(item: Recommendation, recommender: HybridRecommender) -> str:
+def _dominant_signal(item: Recommendation, recommender: Recommender) -> str:
     w = recommender.weights
     contributions = {
         "content": w.content * item.breakdown.content,
@@ -24,9 +25,7 @@ def _dominant_signal(item: Recommendation, recommender: HybridRecommender) -> st
     return max(contributions, key=lambda key: contributions[key])
 
 
-def build_response(
-    recommender: HybridRecommender, student_id: str, k: int
-) -> RecommendationsResponse:
+def build_response(recommender: Recommender, student_id: str, k: int) -> RecommendationsResponse:
     with tracer.start_as_current_span("recommend") as span:
         span.set_attribute("student.id", student_id)
         span.set_attribute("recommendation.k", k)

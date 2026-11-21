@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any, LiteralString
 
 from neo4j import Driver
@@ -45,6 +46,7 @@ class Neo4jRepository:
     """Catálogo, modalidades e instrutores ficam em cache após a primeira leitura.
 
     O catálogo muda pouco (grade do estúdio); histórico e colaborativo são sempre consultados.
+    Uma reserva muda a ocupação, então descarta o catálogo em memória.
     """
 
     def __init__(self, driver: Driver, *, database: str | None = None) -> None:
@@ -101,6 +103,16 @@ class Neo4jRepository:
             bookings={row["lesson_id"]: row["count"] for row in rows},
             ratings={row["lesson_id"]: row["score"] for row in rows if row["score"] is not None},
         )
+
+    def record_booking(self, student_id: str, lesson_id: str, booked_at: datetime) -> bool:
+        rows = self._query(
+            cypher.RECORD_BOOKING,
+            student_id=student_id,
+            lesson_id=lesson_id,
+            booked_at=booked_at.isoformat(),
+        )
+        self._lessons = None
+        return bool(rows)
 
     def popularity(self) -> Mapping[str, int]:
         return {row["lesson_id"]: row["students"] for row in self._query(cypher.POPULARITY)}

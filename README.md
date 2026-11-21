@@ -39,7 +39,13 @@ de portas; Neo4j, embeddings e storage são adaptadores trocáveis por configura
 ```mermaid
 flowchart LR
   APP[App do aluno] -->|GET /students/id/recommendations| API[FastAPI]
-  API --> HYB[HybridRecommender]
+  APP -->|POST /students/id/bookings| API
+  API --> CACHE[CachedRecommender]
+  CACHE --> REDIS[(Redis)]
+  CACHE --> HYB[HybridRecommender]
+  API --> BOOK[BookLesson]
+  BOOK --> RULES
+  BOOK -->|invalida o aluno| REDIS
   HYB --> RULES[Regras<br/>nível · contraindicação · lotação]
   HYB --> CONTENT[Conteúdo<br/>embeddings]
   HYB --> COLLAB[Colaborativo<br/>vizinhança de alunos]
@@ -54,7 +60,15 @@ flowchart LR
   STORE --> MINIO[(MinIO)]
 ```
 
-Mais detalhes, fluxos e falhas: [docs/design-doc.md](docs/design-doc.md).
+Mais detalhes, fluxos e falhas: [docs/design-doc.md](docs/design-doc.md). Padrões e SOLID com
+trechos reais: [docs/arquitetura/padroes.md](docs/arquitetura/padroes.md).
+
+### Cache e reservas
+
+Com `LR_REDIS_URL` definido, as recomendações ficam em cache por aluno (hash `lr:recs:{id}`, um
+campo por `k`, TTL de `LR_RECOMMENDATIONS_CACHE_TTL_SECONDS`, 120 s por padrão). Uma reserva em
+`POST /students/{id}/bookings` aplica as mesmas regras duras (409 com `reason` se lotada, fora
+do nível ou contraindicada) e apaga a entrada do aluno. Se o Redis cair, a API segue sem cache.
 
 ## Como rodar
 
@@ -71,7 +85,7 @@ Ambiente completo com Neo4j, MinIO e carga automática:
 
 ```bash
 cp .env.example .env  # opcional: ajuste portas se houver conflito
-make up               # perfil core: neo4j, minio, seed (carga + avaliação + publicação), api
+make up               # perfil core: neo4j, redis, minio, seed (carga + avaliação + publicação), api
 make ps               # estado dos serviços
 curl "http://localhost:8000/students/aluno-0007/recommendations?k=5"
 make up-all           # + perfil observability: Jaeger (http://localhost:16686) e Prometheus (:9090)

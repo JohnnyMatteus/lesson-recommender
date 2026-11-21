@@ -90,6 +90,21 @@ OPTIONAL MATCH (s)-[v:AVALIOU]->(a)
 RETURN a.id AS lesson_id, r.count AS count, v.score AS score
 """
 
+# O primeiro SET (no-op) pega o lock de escrita da aula; o WHERE seguinte lê a lotação já sob o
+# lock, então duas reservas simultâneas não ocupam a mesma última vaga.
+RECORD_BOOKING = """
+MATCH (s:Aluno {id: $student_id})
+MATCH (a:Aula {id: $lesson_id})
+SET a.booked_seats = a.booked_seats
+WITH s, a
+WHERE a.booked_seats < a.capacity
+SET a.booked_seats = a.booked_seats + 1
+MERGE (s)-[r:RESERVOU]->(a)
+ON CREATE SET r.count = 1, r.first_at = datetime($booked_at), r.last_at = datetime($booked_at)
+ON MATCH SET r.count = r.count + 1, r.last_at = datetime($booked_at)
+RETURN a.booked_seats AS booked_seats
+"""
+
 POPULARITY = """
 MATCH (:Aluno)-[:RESERVOU]->(a:Aula)
 RETURN a.id AS lesson_id, count(*) AS students

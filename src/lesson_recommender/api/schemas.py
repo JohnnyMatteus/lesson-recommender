@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from lesson_recommender.recommender.hybrid import Recommendation
@@ -63,3 +65,18 @@ class RecommendationsResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     detail: str
+
+
+class BookingIn(BaseModel):
+    lesson_id: str = Field(min_length=1, max_length=64)
+
+
+class BookingOut(BaseModel):
+    student_id: str
+    lesson_id: str
+    booked_at: datetime
+
+
+class RejectionResponse(BaseModel):
+    detail: str
+    reason: str = Field(description="Regra violada: lotada, fora_do_nivel ou contraindicada")

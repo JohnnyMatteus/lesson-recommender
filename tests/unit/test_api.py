@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 
 from lesson_recommender.adapters.memory_repository import InMemoryRepository
 from lesson_recommender.api.app import create_app
+from lesson_recommender.application.booking import BookLesson
 from lesson_recommender.embeddings.hashing import HashingEmbedder
 from lesson_recommender.recommender.content import ContentModel
 from lesson_recommender.recommender.hybrid import HybridRecommender
@@ -59,3 +60,30 @@ def test_health_and_metrics(client: TestClient) -> None:
     assert "lr_http_requests_total" in metrics
     assert 'route="/students/{student_id}/recommendations"' in metrics
     assert "lr_recommendations_total" in metrics
+
+
+@pytest.fixture
+def booking_client() -> TestClient:
+    repo = InMemoryRepository(studio())
+    content = ContentModel(
+        HashingEmbedder(256), repo.list_lessons(), repo.modalities(), repo.instructors()
+    )
+    recommender = HybridRecommender(repo, repo, content, neighbors=10)
+    return TestClient(create_app(recommender, BookLesson(repo, repo)))
+
+
+def test_booking_created(booking_client: TestClient) -> None:
+    response = booking_client.post("/students/eva/bookings", json={"lesson_id": "y2"})
+    assert response.status_code == 201
+    assert response.json()["lesson_id"] == "y2"
+
+
+def test_booking_rejected_by_rule_is_409(booking_client: TestClient) -> None:
+    response = booking_client.post("/students/duda/bookings", json={"lesson_id": "x1"})
+    assert response.status_code == 409
+    assert response.json()["reason"] == "contraindicada"
+
+
+def test_booking_unknown_lesson_is_404(booking_client: TestClient) -> None:
+    response = booking_client.post("/students/eva/bookings", json={"lesson_id": "zz"})
+    assert response.status_code == 404

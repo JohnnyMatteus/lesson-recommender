@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
+from datetime import datetime
 
 from lesson_recommender.domain.models import (
     CollaborativeSignal,
@@ -66,6 +68,21 @@ class InMemoryRepository:
 
     def popularity(self) -> Mapping[str, int]:
         return self._popularity
+
+    def record_booking(self, student_id: str, lesson_id: str, booked_at: datetime) -> bool:
+        index = next(i for i, lesson in enumerate(self._lessons) if lesson.id == lesson_id)
+        lesson = self._lessons[index]
+        if lesson.is_full:
+            return False
+        lessons = list(self._lessons)
+        lessons[index] = replace(lesson, booked_seats=lesson.booked_seats + 1)
+        self._lessons = tuple(lessons)
+        counts = self._booking_counts.setdefault(student_id, Counter())
+        if lesson_id not in counts:
+            self._popularity[lesson_id] = self._popularity.get(lesson_id, 0) + 1
+        counts[lesson_id] += 1
+        self._booked_sets[student_id] = frozenset(counts)
+        return True
 
     def neighbor_scores(
         self, student_id: str, *, neighbors: int

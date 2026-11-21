@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Protocol
 
 import numpy as np
@@ -54,3 +55,11 @@ class CollaborativeSource(Protocol):
     def neighbor_scores(
         self, student_id: str, *, neighbors: int
     ) -> Mapping[str, CollaborativeSignal]: ...
+
+
+class BookingRepository(Protocol):
+    """Gravação de reservas."""
+
+    def record_booking(self, student_id: str, lesson_id: str, booked_at: datetime) -> bool:
+        """Grava a reserva e ocupa uma vaga. Devolve False se a aula lotou antes da gravação."""
+        ...

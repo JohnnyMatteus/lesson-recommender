@@ -9,20 +9,20 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from lesson_recommender.domain.models import Dataset
-from lesson_recommender.recommender.hybrid import HybridRecommender
+from lesson_recommender.recommender.ports import Recommender
 
-RecommenderFactory = Callable[[Dataset], HybridRecommender]
+RecommenderFactory = Callable[[Dataset], Recommender]
 
 
 class TenantRecommenders:
     def __init__(self, factory: RecommenderFactory) -> None:
         self._factory = factory
-        self._by_tenant: dict[str, HybridRecommender] = {}
+        self._by_tenant: dict[str, Recommender] = {}
 
     def replace(self, tenant: str, dataset: Dataset) -> None:
         self._by_tenant[tenant] = self._factory(dataset)
 
-    def get(self, tenant: str) -> HybridRecommender | None:
+    def get(self, tenant: str) -> Recommender | None:
         return self._by_tenant.get(tenant)
 
     def tenants(self) -> list[str]:
