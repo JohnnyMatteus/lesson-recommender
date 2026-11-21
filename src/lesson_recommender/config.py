@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     s3_secret_key: SecretStr = SecretStr("dev-only-change-me")
     s3_region: str = "us-east-1"
 
+    redis_url: str | None = None
+    recommendations_cache_ttl_seconds: int = Field(default=120, gt=0)
+
     log_level: str = "INFO"
     otel_service_name: str = "lesson-recommender"
     otel_exporter_otlp_endpoint: str | None = None

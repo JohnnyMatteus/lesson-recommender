@@ -17,3 +17,18 @@ class InvalidRequestError(RecommenderError):
 
 class ConfigurationError(RecommenderError):
     """Configuração inválida ou dependência opcional ausente."""
+
+
+class LessonNotFoundError(RecommenderError):
+    def __init__(self, lesson_id: str) -> None:
+        super().__init__(f"aula não encontrada: {lesson_id}")
+        self.lesson_id = lesson_id
+
+
+class BookingRejectedError(RecommenderError):
+    """A reserva viola uma regra dura (lotação, nível ou contraindicação)."""
+
+    def __init__(self, lesson_id: str, reason: str) -> None:
+        super().__init__(f"reserva recusada para {lesson_id}: {reason}")
+        self.lesson_id = lesson_id
+        self.reason = reason

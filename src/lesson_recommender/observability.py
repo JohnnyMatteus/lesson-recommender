@@ -30,6 +30,10 @@ RECOMMENDATIONS = Counter(
 EMPTY_RECOMMENDATIONS = Counter(
     "lr_empty_recommendations_total", "Pedidos sem nenhuma aula elegível"
 )
+CACHE_REQUESTS = Counter(
+    "lr_recommendation_cache_total", "Consultas ao cache de recomendações", ["result"]
+)
+BOOKINGS = Counter("lr_bookings_total", "Reservas recebidas, por resultado", ["result"])
 
 
 class JsonFormatter(logging.Formatter):
