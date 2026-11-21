@@ -1,0 +1,35 @@
+name: Bug
+description: Algo não funciona como deveria
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu
+      description: Comportamento observado. Inclua a requisição ou o comando.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que era esperado
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. make up
+        2. curl "localhost:8000/students/aluno-0007/recommendations?k=5"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit ou versão
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (com trace_id, se houver)
+      render: json
