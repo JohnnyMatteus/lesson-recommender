@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lesson-recommender"
+version = "0.1.0"
+description = "Recomendador híbrido de aulas (conteúdo + grafo) para estúdios de yoga e pilates, com avaliação offline."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Johnny Santos" }]
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn>=0.32",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.6",
+  "numpy>=2.1",
+  "neo4j>=5.26",
+  "prometheus-client>=0.21",
+  "opentelemetry-api>=1.28",
+  "opentelemetry-sdk>=1.28",
+  "opentelemetry-exporter-otlp-proto-http>=1.28",
+]
+
+[project.optional-dependencies]
+sentence-transformers = ["sentence-transformers>=3.3"]
+s3 = ["boto3>=1.35"]
+dev = [
+  "pytest>=8.3",
+  "pytest-cov>=6.0",
+  "httpx>=0.28",
+  "testcontainers[neo4j]>=4.15",
+  "boto3>=1.35",
+  "ruff>=0.8",
+  "mypy>=1.13",
+  "build>=1.2",
+]
+
+[project.scripts]
+lesson-recommender = "lesson_recommender.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lesson_recommender"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "N", "RUF", "PT", "C4", "RET"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["sentence_transformers.*", "testcontainers.*", "docker.*", "boto3.*", "botocore.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = ["integration: testes que precisam de Docker (Neo4j via testcontainers)"]
