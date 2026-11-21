@@ -20,7 +20,7 @@ Somar os valores crus deixaria o sinal de maior escala dominar.
   - **colaborativo e popularidade:** divisão pelo máximo, para que zero continue significando
     "nenhuma evidência".
 - Combinar linearmente: `score = w_c·conteúdo + w_col·colaborativo + w_pop·popularidade`.
-- Pesos padrão: 0,5 / 0,4 / 0,1, configuráveis por variável de ambiente (`LR_WEIGHT_*`).
+- Pesos padrão: 0,3 / 0,6 / 0,1 (escolhidos no recorte de validação, ver `reports/avaliacao.md`), configuráveis por variável de ambiente (`LR_WEIGHT_*`).
   - Pesos negativos são rejeitados, assim como todos zerados.
   - A popularidade tem peso pequeno: serve de desempate e de rede de segurança no cold start.
 - A resposta da API expõe a decomposição normalizada (`breakdown`) e frases de explicação
