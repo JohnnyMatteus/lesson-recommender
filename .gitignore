@@ -12,8 +12,9 @@ dist/
 .coverage
 htmlcov/
 
-# Dados gerados localmente
-data/
+# Dados e artefatos gerados localmente
+/data/
+/artifacts/
 
 # Ambiente
 .env

@@ -1,0 +1,26 @@
+name: Funcionalidade
+description: Proponha uma melhoria no recomendador, na avaliação ou na API
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: Que dor de aluno, estúdio ou time isso resolve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+    validations:
+      required: true
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: Como medir
+      description: Qual métrica offline (ou online) deve melhorar, e quanto?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas

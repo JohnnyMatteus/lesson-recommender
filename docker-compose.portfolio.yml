@@ -1,0 +1,9 @@
+# Opcional: liga a API à rede compartilhada do ecossistema (criada com `make network`).
+# Uso: docker compose -f docker-compose.yml -f docker-compose.portfolio.yml --profile core up -d
+services:
+  api:
+    networks: [lesson-recommender, portfolio-net]
+
+networks:
+  portfolio-net:
+    external: true
