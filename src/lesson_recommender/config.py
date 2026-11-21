@@ -36,8 +36,8 @@ class Settings(BaseSettings):
     embeddings_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     embeddings_dimensions: int = Field(default=1024, gt=0)
 
-    weight_content: float = Field(default=0.5, ge=0)
-    weight_collaborative: float = Field(default=0.4, ge=0)
+    weight_content: float = Field(default=0.3, ge=0)
+    weight_collaborative: float = Field(default=0.6, ge=0)
     weight_popularity: float = Field(default=0.1, ge=0)
     neighbors: int = Field(default=30, gt=0)
 

@@ -23,7 +23,7 @@ def test_recommendations_with_explanations(client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["student_id"] == "ana"
-    assert body["weights"] == {"content": 0.5, "collaborative": 0.4, "popularity": 0.1}
+    assert body["weights"] == {"content": 0.3, "collaborative": 0.6, "popularity": 0.1}
     [item] = body["items"]
     assert item["lesson"]["id"] == "y2"
     assert item["lesson"]["seats_left"] == 10

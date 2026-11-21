@@ -9,6 +9,36 @@ def _pct(value: float) -> str:
     return f"{value:.3f}"
 
 
+def _tuning_section(report: EvaluationReport) -> list[str]:
+    tuning = report.tuning
+    assert tuning is not None
+    lines = [
+        "",
+        "## Ajuste de pesos (recorte de validação)",
+        "",
+        f"Os pesos do híbrido foram escolhidos num recorte de validação tirado do treino, "
+        f"sem tocar no teste: corte interno em `{tuning.cutoff.isoformat()}` "
+        f"({tuning.train_bookings} reservas de treino, {tuning.validation_bookings} de validação, "
+        f"{tuning.students} alunos). Grade com passo 0.1 e soma 1; critério: NDCG@{tuning.k}.",
+        "",
+        "| Posição | Conteúdo | Colaborativo | Popularidade | NDCG@" + f"{tuning.k} |",
+        "|---:|---:|---:|---:|---:|",
+    ]
+    for rank, trial in enumerate(tuning.trials[:5], start=1):
+        w = trial.weights
+        lines.append(
+            f"| {rank} | {w.content:.1f} | {w.collaborative:.1f} | {w.popularity:.1f} | "
+            f"{trial.ndcg:.3f} |"
+        )
+    worst = tuning.trials[-1]
+    lines += [
+        "",
+        f"Pior combinação da grade: NDCG@{tuning.k} = {worst.ndcg:.3f} "
+        f"({len(tuning.trials)} combinações testadas).",
+    ]
+    return lines
+
+
 def render_markdown(report: EvaluationReport) -> str:
     config = report.config
     lines = [
@@ -70,6 +100,8 @@ def render_markdown(report: EvaluationReport) -> str:
             f"| {interval.baseline} | {interval.k} | {interval.mean_delta:+.3f} | "
             f"[{interval.low:+.3f}, {interval.high:+.3f}] | {verdict} |"
         )
+    if report.tuning is not None:
+        lines += _tuning_section(report)
     lines += ["", "## Modelos", ""]
     lines += [f"- `{result.name}`: {result.description}." for result in report.results]
     return "\n".join(lines) + "\n"

@@ -42,7 +42,7 @@ jobs:
       - name: Relatório de avaliação é reprodutível
         run: |
           lesson-recommender generate --output data/dataset.json
-          lesson-recommender evaluate --dataset data/dataset.json --output reports/avaliacao.md
+          lesson-recommender evaluate --dataset data/dataset.json --output reports/avaliacao.md --tune
           git diff --exit-code reports/avaliacao.md
 
   build:

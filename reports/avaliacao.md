@@ -19,7 +19,7 @@
 | popularidade | 0.047 | 0.178 | 0.125 | 0.097 | 0.200 |
 | conteudo | 0.103 | 0.413 | 0.298 | 0.244 | 1.000 |
 | colaborativo | 0.108 | 0.436 | 0.320 | 0.269 | 0.938 |
-| **hibrido** | 0.118 | 0.480 | 0.345 | 0.286 | 0.975 |
+| **hibrido** | 0.121 | 0.485 | 0.343 | 0.283 | 0.963 |
 
 ## Resultados com k = 10
 
@@ -29,7 +29,7 @@
 | popularidade | 0.044 | 0.344 | 0.180 | 0.119 | 0.388 |
 | conteudo | 0.075 | 0.610 | 0.364 | 0.273 | 1.000 |
 | colaborativo | 0.076 | 0.599 | 0.378 | 0.295 | 0.975 |
-| **hibrido** | 0.084 | 0.680 | 0.413 | 0.317 | 1.000 |
+| **hibrido** | 0.083 | 0.663 | 0.404 | 0.309 | 1.000 |
 
 ## Híbrido contra baselines (NDCG, bootstrap pareado)
 
@@ -37,10 +37,24 @@ Diferença média por aluno e intervalo de 95% com 1000 reamostragens.
 
 | Baseline | k | Δ NDCG | IC 95% | Conclusão |
 |---|---:|---:|---|---|
-| popularidade | 5 | +0.220 | [+0.163, +0.273] | híbrido melhor |
-| popularidade | 10 | +0.233 | [+0.186, +0.279] | híbrido melhor |
-| aleatorio | 5 | +0.270 | [+0.215, +0.327] | híbrido melhor |
-| aleatorio | 10 | +0.287 | [+0.234, +0.342] | híbrido melhor |
+| popularidade | 5 | +0.218 | [+0.166, +0.269] | híbrido melhor |
+| popularidade | 10 | +0.224 | [+0.180, +0.270] | híbrido melhor |
+| aleatorio | 5 | +0.269 | [+0.212, +0.329] | híbrido melhor |
+| aleatorio | 10 | +0.277 | [+0.228, +0.333] | híbrido melhor |
+
+## Ajuste de pesos (recorte de validação)
+
+Os pesos do híbrido foram escolhidos num recorte de validação tirado do treino, sem tocar no teste: corte interno em `2026-07-13T09:30:00+00:00` (9813 reservas de treino, 2466 de validação, 189 alunos). Grade com passo 0.1 e soma 1; critério: NDCG@10.
+
+| Posição | Conteúdo | Colaborativo | Popularidade | NDCG@10 |
+|---:|---:|---:|---:|---:|
+| 1 | 0.3 | 0.6 | 0.1 | 0.367 |
+| 2 | 0.2 | 0.7 | 0.1 | 0.365 |
+| 3 | 0.3 | 0.7 | 0.0 | 0.365 |
+| 4 | 0.5 | 0.4 | 0.1 | 0.363 |
+| 5 | 0.4 | 0.4 | 0.2 | 0.362 |
+
+Pior combinação da grade: NDCG@10 = 0.150 (66 combinações testadas).
 
 ## Modelos
 
@@ -48,4 +62,4 @@ Diferença média por aluno e intervalo de 95% com 1000 reamostragens.
 - `popularidade`: Mais alunos distintos no treino.
 - `conteudo`: Só embeddings (ablação).
 - `colaborativo`: Só vizinhança de alunos, mesma conta do Cypher (ablação).
-- `hibrido`: Conteúdo 0.5 + colaborativo 0.4 + popularidade 0.1.
+- `hibrido`: Conteúdo 0.3 + colaborativo 0.6 + popularidade 0.1.
