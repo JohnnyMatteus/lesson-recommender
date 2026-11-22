@@ -162,6 +162,7 @@ make test             # tudo
 | [0008](docs/adr/0008-artefatos-do-modelo-no-minio.md) | Artefatos do modelo (índice de embeddings e relatórios) em S3 atrás de uma porta (servidor local trocado pelo ADR 0010) |
 | [0009](docs/adr/0009-ingestao-do-saas-por-api-v1.md) | Ingestão do SaaS por API v1 com credencial de serviço, ACL e um recomendador por tenant |
 | [0010](docs/adr/0010-localstack-no-s3-local.md) | LocalStack no S3 local (substitui a parte do ADR 0008 sobre o servidor local) |
+
 O núcleo, a métrica de avaliação, está explicado para entrevista em
 [docs/roteiros/metrica-de-avaliacao.md](docs/roteiros/metrica-de-avaliacao.md).
 
@@ -207,9 +208,11 @@ Detalhes na seção 8 do design doc.
 5. Vizinhos pré-computados com GDS, cache por aluno e circuit breaker no Neo4j.
 6. Diversidade (MMR) e limite de exposição por aula; A/B online com guardrails.
 7. Validar de ponta a ponta o compose final, com LocalStack e healthcheck do Neo4j via HTTP. A
-   primeira versão (Neo4j, carga e API) e o bucket no S3 local foram validados localmente; a
-   subida completa ficou pendente por falta de memória no Docker local. Também falta um smoke
-   test do compose no CI.
+   primeira versão (Neo4j, carga e API) e o bucket foram validados localmente quando o S3 local
+   ainda era o servidor anterior; o LocalStack não foi validado localmente (só o job
+   `s3-localstack` do CI o exercita). Esse job cobre apenas o S3 e o seed (publicação dos
+   artefatos), não a API nem a subida completa, que ficou pendente por falta de memória no
+   Docker local.
 
 ## Estrutura
 
