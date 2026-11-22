@@ -1,7 +1,7 @@
 # Ambiente local do lesson-recommender.
 #
 # Perfis:
-#   core          -> Neo4j, Redis (cache), MinIO (artefatos do modelo), carga do dataset e API
+#   core          -> Neo4j, Redis (cache), LocalStack S3 (artefatos do modelo), carga do dataset e API
 #   observability -> Jaeger (traces OTLP) e Prometheus (métricas da API)
 #
 # Senhas e chaves abaixo são apenas de desenvolvimento (dev-only-*). Variáveis em .env.example.
@@ -13,9 +13,9 @@ x-app-env: &app-env
   LR_NEO4J_USER: neo4j
   LR_NEO4J_PASSWORD: ${LR_NEO4J_PASSWORD:-dev-only-change-me}
   LR_ARTIFACTS_BACKEND: s3
-  LR_S3_ENDPOINT_URL: http://minio:9000
+  LR_S3_ENDPOINT_URL: http://localstack:4566
   LR_S3_BUCKET: ${LR_S3_BUCKET:-lesson-recommender-artifacts}
-  LR_S3_ACCESS_KEY: ${LR_S3_ACCESS_KEY:-dev-only-minio}
+  LR_S3_ACCESS_KEY: ${LR_S3_ACCESS_KEY:-dev-only-localstack}
   LR_S3_SECRET_KEY: ${LR_S3_SECRET_KEY:-dev-only-change-me}
   LR_EMBEDDINGS_BACKEND: hashing
   LR_LOG_LEVEL: ${LR_LOG_LEVEL:-INFO}
@@ -66,40 +66,28 @@ services:
         limits:
           memory: 128m
 
-  minio:
-    image: minio/minio:RELEASE.2025-04-03T14-56-28Z
+  # S3 local (LocalStack, só o serviço s3). O bucket versionado é criado pelo script de init quando o LocalStack
+  # fica pronto; o healthcheck só passa depois dele. Sem persistência entre recriações (ADR 0010).
+  localstack:
+    image: localstack/localstack:4.4.0
     profiles: [core]
-    command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${LR_S3_ACCESS_KEY:-dev-only-minio}
-      MINIO_ROOT_PASSWORD: ${LR_S3_SECRET_KEY:-dev-only-change-me}
+      SERVICES: s3
+      DEBUG: "0"
+      LR_S3_BUCKET: ${LR_S3_BUCKET:-lesson-recommender-artifacts}
     ports:
-      - "${LR_MINIO_API_PORT:-9000}:9000"
-      - "${LR_MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${LR_S3_PORT:-4566}:4566"
     volumes:
-      - minio-data:/data
+      - ./deploy/localstack/init-s3.sh:/etc/localstack/init/ready.d/10-artifacts-bucket.sh:ro
     networks: [lesson-recommender]
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      # /_localstack/init/ready devolve "completed": true e o estado de cada script (fonte do LocalStack v4.4.0).
+      # Pronto = estágio concluído, script do bucket executado e nenhum em erro.
+      test: ["CMD-SHELL", "out=$$(curl -fsS http://127.0.0.1:4566/_localstack/init/ready) && echo \"$$out\" | grep -Eq '\"completed\": ?true' && echo \"$$out\" | grep -q '\"SUCCESSFUL\"' && ! echo \"$$out\" | grep -q '\"ERROR\"'"]
       interval: 5s
       timeout: 5s
       retries: 20
-
-  minio-init:
-    image: minio/mc:RELEASE.2025-04-03T17-07-56Z
-    profiles: [core]
-    environment:
-      LR_S3_BUCKET: ${LR_S3_BUCKET:-lesson-recommender-artifacts}
-      LR_S3_ACCESS_KEY: ${LR_S3_ACCESS_KEY:-dev-only-minio}
-      LR_S3_SECRET_KEY: ${LR_S3_SECRET_KEY:-dev-only-change-me}
-    entrypoint: ["/bin/sh", "/init/create-bucket.sh"]
-    volumes:
-      - ./deploy/minio:/init:ro
-    networks: [lesson-recommender]
-    depends_on:
-      minio:
-        condition: service_healthy
-    restart: "no"
+      start_period: 15s
 
   seed:
     build: .
@@ -118,8 +106,8 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
+      localstack:
+        condition: service_healthy
     restart: "no"
 
   api:
@@ -186,7 +174,6 @@ services:
 volumes:
   neo4j-data:
   redis-data:
-  minio-data:
   prometheus-data:
 
 networks:

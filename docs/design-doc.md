@@ -74,7 +74,7 @@ flowchart TB
     HASH[HashingEmbedder]
     ST[SentenceTransformerEmbedder<br/>opcional]
     LOC[LocalArtifactStore]
-    S3[S3ArtifactStore<br/>MinIO / S3]
+    S3[S3ArtifactStore<br/>LocalStack / S3]
   end
   API --> HYB
   CLI --> GEN & EVA
@@ -225,8 +225,8 @@ sequenceDiagram
 
 ### 5.3 Carga do ambiente (docker-compose)
 
-O fluxo é `neo4j` (healthy) e `minio` (healthy), depois `minio-init` (cria o bucket), depois
-`seed`, que gera o dataset, carrega o grafo, avalia e publica no MinIO. Por fim sobe a `api`.
+O fluxo é `neo4j` (healthy) e `localstack` (healthy, o script de init já criou o bucket), depois
+`seed`, que gera o dataset, carrega o grafo, avalia e publica no S3 local. Por fim sobe a `api`.
 Cada etapa espera a anterior com `depends_on` + `condition`.
 
 ## 6. Falhas e como são tratadas
@@ -270,7 +270,7 @@ Cada etapa espera a anterior com `depends_on` + `condition`.
 | Logs | JSON em stdout (`observability.JsonFormatter`): ts, nível, logger, mensagem, `trace_id`/`span_id` quando há span ativo e campos de contexto (rota, status, duração, aluno, k, retornados) |
 | Métricas | `/metrics` em formato Prometheus: `lr_http_requests_total{route,method,status}`, `lr_http_request_duration_seconds`, `lr_recommendations_total{dominant_signal}`, `lr_empty_recommendations_total` |
 | Traces | OpenTelemetry SDK, com span `recommend` (atributos `student.id`, `recommendation.k`, `recommendation.count`). Exporta via OTLP HTTP quando `LR_OTEL_EXPORTER_OTLP_ENDPOINT` está definido; `make up-all` liga o Jaeger |
-| Qualidade do modelo | Relatório offline versionado no Git e publicado por data no MinIO |
+| Qualidade do modelo | Relatório offline versionado no Git e publicado por data no S3 local |
 
 `lr_recommendations_total{dominant_signal}` acompanha qual sinal domina as recomendações
 servidas. Se a popularidade passar a dominar, provavelmente o grafo está vazio ou desatualizado.
@@ -285,7 +285,7 @@ Os detalhes estão nos ADRs:
 - **PostgreSQL no lugar do Neo4j** (ADR 0003): autojunções em vez de travessia.
 - **Split aleatório ou leave-one-out** (ADR 0004): vazamento temporal.
 - **Regras como penalidade** (ADR 0005): inseguro.
-- **LocalStack no lugar do MinIO** (ADR 0008): mais pesado do que o necessário.
+- **LocalStack** foi rejeitado no ADR 0008 por peso e adotado no ADR 0010, porque a imagem do servidor anterior saiu dos registros públicos.
 
 ## 10. Plano de evolução
 
@@ -293,7 +293,7 @@ Os detalhes estão nos ADRs:
    teste.
 2. **Protocolo de cold start** (alunos novos) e métricas por segmento: nível, modalidade e
    alunos com restrição.
-3. **sentence-transformers medido** no mesmo relatório; carregar o índice publicado no MinIO
+3. **sentence-transformers medido** no mesmo relatório; carregar o índice publicado no S3 local
    na subida da API.
 4. **Ingestão de eventos do `saas-multitenant`** (reservas e ocupação em tempo quase real), o
    que torna a regra de lotação confiável.

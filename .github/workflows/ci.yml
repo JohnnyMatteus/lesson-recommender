@@ -57,3 +57,53 @@ jobs:
       - run: pip install build
       - run: python -m build
       - run: docker build -t lesson-recommender:ci .
+
+  s3-localstack:
+    name: "S3 local (LocalStack): publicação, put/get e versionamento"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e '.[dev]'
+
+      # --wait só retorna com o healthcheck verde, e o do LocalStack só passa depois que o init-s3.sh
+      # terminou sem erro (bucket versionado criado).
+      - name: Subir o S3 pelo compose real (--wait)
+        run: |
+          set -o pipefail
+          docker compose --profile core up -d --wait --wait-timeout 300 localstack 2>&1 | tee "$RUNNER_TEMP/up.log"
+
+      # O seed é o fluxo real: gera o dataset, carrega o Neo4j, avalia e publica os artefatos no S3.
+      - name: Seed do compose (carga no Neo4j e publicação no S3)
+        run: |
+          set -o pipefail
+          docker compose --profile core run --rm --build seed 2>&1 | tee "$RUNNER_TEMP/seed.log"
+
+      - name: O seed publicou os artefatos no bucket
+        run: |
+          set -o pipefail
+          docker compose --profile core exec -T localstack awslocal s3api list-object-versions --bucket lesson-recommender-artifacts --prefix runs/ 2>&1 | tee "$RUNNER_TEMP/runs.log"
+          grep -q 'avaliacao.md' "$RUNNER_TEMP/runs.log"
+          grep -q 'manifest.json' "$RUNNER_TEMP/runs.log"
+
+      - name: Put, get e versionamento (testes de integração)
+        env:
+          LR_S3_ENDPOINT_URL: http://127.0.0.1:4566
+          LR_REQUIRE_S3: "1"
+        run: |
+          set -o pipefail
+          pytest tests/integration/test_s3_localstack.py -v 2>&1 | tee "$RUNNER_TEMP/pytest-s3.log"
+          ! grep -qi "skipped" "$RUNNER_TEMP/pytest-s3.log"
+
+      - name: Logs do compose em caso de falha
+        if: failure()
+        run: docker compose --profile core logs --no-color --tail=200 localstack seed
+
+      # Só no runner: derruba o ambiente e apaga os volumes.
+      - name: Derrubar o ambiente
+        if: always()
+        run: docker compose --profile core down -v --remove-orphans

@@ -53,7 +53,7 @@ make up | up-all | ps | logs | seed | down | clean   # docker-compose (perfis co
 | `src/lesson_recommender/evaluation/` | Split temporal, métricas, baselines, runner, relatório |
 | `src/lesson_recommender/graph/` | Cypher, carga, repositório Neo4j |
 | `src/lesson_recommender/saas/` | Integração com o SaaS: payloads, ACL, cliente API v1, JWT, tenants, sync |
-| `src/lesson_recommender/artifacts/` | Porta de storage (local, S3/MinIO) e publicação por data |
+| `src/lesson_recommender/artifacts/` | Porta de storage (local, S3/LocalStack) e publicação por data |
 | `tests/factories.py` | Estúdio mínimo, com um caso por regra |
 | `docs/` | design doc, ADRs, roteiro do núcleo |
 
