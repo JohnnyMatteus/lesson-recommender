@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     artifacts_dir: Path = Path("artifacts")
     s3_endpoint_url: str | None = None
     s3_bucket: str = "lesson-recommender-artifacts"
-    s3_access_key: str = "dev-only-minio"
+    s3_access_key: str = "dev-only-localstack"
     s3_secret_key: SecretStr = SecretStr("dev-only-change-me")
     s3_region: str = "us-east-1"
 

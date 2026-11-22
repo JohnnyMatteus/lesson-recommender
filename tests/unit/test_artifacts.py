@@ -85,3 +85,11 @@ def test_publish_versions_artifacts_by_date() -> None:
         "runs/2026-11-21/embeddings/lessons.npy",
         "runs/2026-11-21/embeddings/manifest.json",
     }
+
+
+def test_build_s3_client_usa_path_style_com_endpoint_proprio() -> None:
+    pytest.importorskip("boto3")
+    from lesson_recommender.artifacts.store import build_s3_client
+
+    client = build_s3_client("http://localstack:4566", "dev-only-a", "dev-only-b", "us-east-1")
+    assert client.meta.config.s3["addressing_style"] == "path"

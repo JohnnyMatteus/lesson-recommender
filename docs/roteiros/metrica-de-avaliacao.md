@@ -129,7 +129,7 @@ comparar dois intervalos independentes.
 - O relatório não tem data de geração. O CI regenera e roda `git diff --exit-code`: se uma
   mudança de código altera os números, o PR precisa trazer o relatório novo, e o revisor vê o
   impacto no diff.
-- Cada execução publicada (`--publish`) vai para o MinIO em `runs/AAAA-MM-DD/` (ADR 0008), o que
+- Cada execução publicada (`--publish`) vai para o S3 local (LocalStack) em `runs/AAAA-MM-DD/` (ADR 0008), o que
   forma o histórico de qualidade.
 
 ## 7. Trade-offs assumidos

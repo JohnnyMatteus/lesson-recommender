@@ -56,8 +56,8 @@ flowchart LR
   CLI --> EVAL[Avaliação offline]
   EVAL --> HYB
   EVAL --> REPORT[reports/avaliacao.md]
-  CLI --> STORE{{ArtifactStore<br/>local · S3/MinIO}}
-  STORE --> MINIO[(MinIO)]
+  CLI --> STORE{{ArtifactStore<br/>local · S3/LocalStack}}
+  STORE --> S3LOCAL[(LocalStack S3)]
 ```
 
 Mais detalhes, fluxos e falhas: [docs/design-doc.md](docs/design-doc.md). Padrões e SOLID com
@@ -81,11 +81,11 @@ make run              # API em http://localhost:8000 com repositório em memóri
 curl "http://localhost:8000/students/aluno-0007/recommendations?k=5"
 ```
 
-Ambiente completo com Neo4j, MinIO e carga automática:
+Ambiente completo com Neo4j, LocalStack S3 e carga automática:
 
 ```bash
 cp .env.example .env  # opcional: ajuste portas se houver conflito
-make up               # perfil core: neo4j, redis, minio, seed (carga + avaliação + publicação), api
+make up               # perfil core: neo4j, redis, localstack, seed (carga + avaliação + publicação), api
 make ps               # estado dos serviços
 curl "http://localhost:8000/students/aluno-0007/recommendations?k=5"
 make up-all           # + perfil observability: Jaeger (http://localhost:16686) e Prometheus (:9090)
@@ -93,8 +93,10 @@ make down             # para tudo (make clean também apaga volumes)
 ```
 
 - Neo4j Browser: http://localhost:7474 (usuário `neo4j`, senha `dev-only-change-me`).
-- Console do MinIO: http://localhost:9001 (artefatos em `runs/AAAA-MM-DD/`).
+- S3 local (LocalStack, só a API): http://localhost:4566, bucket `lesson-recommender-artifacts` (artefatos em `runs/AAAA-MM-DD/`).
 - Documentação interativa da API: http://localhost:8000/docs.
+
+**Limites do S3 local.** O LocalStack community não persiste dados entre recriações do contêiner: depois de `make down` e `make up` o bucket começa vazio (`make seed` republica os artefatos). Ele serve para exercitar o caminho S3 (put, get e versionamento), não como garantia de durabilidade nem de conformidade com a AWS. A imagem usada é `localstack/localstack:4.4.0`.
 
 Exemplo de resposta (resumido):
 
@@ -127,7 +129,7 @@ principais:
 | `LR_EMBEDDINGS_BACKEND` | `hashing` | `sentence-transformers` exige `pip install '.[sentence-transformers]'` |
 | `LR_WEIGHT_CONTENT` / `_COLLABORATIVE` / `_POPULARITY` | 0,3 / 0,6 / 0,1 | Pesos do híbrido |
 | `LR_NEIGHBORS` | 30 | Vizinhos no colaborativo |
-| `LR_ARTIFACTS_BACKEND` | `local` | `s3` publica no MinIO ou S3 (`LR_S3_ENDPOINT_URL`) |
+| `LR_ARTIFACTS_BACKEND` | `local` | `s3` publica no S3 local (LocalStack) ou na AWS (`LR_S3_ENDPOINT_URL`) |
 
 ## Como testar
 
@@ -157,9 +159,9 @@ make test             # tudo
 | [0005](docs/adr/0005-regras-de-negocio-como-filtros.md) | Regras de negócio como filtros duros; lotação desligada na avaliação offline |
 | [0006](docs/adr/0006-dataset-sintetico-com-padroes-plantados.md) | Dataset sintético reprodutível com padrões plantados |
 | [0007](docs/adr/0007-combinacao-hibrida-linear.md) | Combinação linear com normalização por pedido e pesos configuráveis |
-| [0008](docs/adr/0008-artefatos-do-modelo-no-minio.md) | Artefatos do modelo (índice de embeddings e relatórios) no S3/MinIO atrás de uma porta |
+| [0008](docs/adr/0008-artefatos-do-modelo-no-minio.md) | Artefatos do modelo (índice de embeddings e relatórios) em S3 atrás de uma porta (servidor local trocado pelo ADR 0010) |
 | [0009](docs/adr/0009-ingestao-do-saas-por-api-v1.md) | Ingestão do SaaS por API v1 com credencial de serviço, ACL e um recomendador por tenant |
-
+| [0010](docs/adr/0010-localstack-no-s3-local.md) | LocalStack no S3 local (substitui a parte do ADR 0008 sobre o servidor local) |
 O núcleo, a métrica de avaliação, está explicado para entrevista em
 [docs/roteiros/metrica-de-avaliacao.md](docs/roteiros/metrica-de-avaliacao.md).
 
@@ -199,13 +201,13 @@ Detalhes na seção 8 do design doc.
 
 1. Ajustar também o número de vizinhos no recorte de validação.
 2. Protocolo de cold start e métricas por segmento (nível, restrições).
-3. Medir sentence-transformers e carregar o índice publicado no MinIO na subida da API.
+3. Medir sentence-transformers e carregar o índice publicado no S3 local na subida da API.
 4. Ingestão por eventos do `saas-multitenant` no lugar do pull por API (ADR 0009), e cold start
    para aluno sem reserva.
 5. Vizinhos pré-computados com GDS, cache por aluno e circuit breaker no Neo4j.
 6. Diversidade (MMR) e limite de exposição por aula; A/B online com guardrails.
-7. Validar de ponta a ponta o compose final, com MinIO e healthcheck do Neo4j via HTTP. A
-   primeira versão (Neo4j, carga e API) e o bucket no MinIO foram validados localmente; a
+7. Validar de ponta a ponta o compose final, com LocalStack e healthcheck do Neo4j via HTTP. A
+   primeira versão (Neo4j, carga e API) e o bucket no S3 local foram validados localmente; a
    subida completa ficou pendente por falta de memória no Docker local. Também falta um smoke
    test do compose no CI.
 
@@ -219,12 +221,12 @@ src/lesson_recommender/
   graph/         Cypher, carga e repositório Neo4j
   embeddings/    hashing e sentence-transformers
   evaluation/    split, métricas, baselines, runner, relatório
-  artifacts/     porta de storage (local, S3/MinIO) e publicação
+  artifacts/     porta de storage (local, S3/LocalStack) e publicação
   api/           FastAPI e schemas
 tests/unit, tests/integration
 docs/            design doc, ADRs e roteiros
 reports/         relatório de avaliação gerado
-deploy/          configs do compose (MinIO, Prometheus)
+deploy/          configs do compose (init do S3 no LocalStack, Prometheus)
 ```
 
 ## Licença

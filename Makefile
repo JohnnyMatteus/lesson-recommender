@@ -45,7 +45,7 @@ run: dataset ## API local com repositório em memória
 network: ## Cria a rede compartilhada portfolio-net (opcional)
 	docker network inspect portfolio-net >/dev/null 2>&1 || docker network create portfolio-net
 
-up: ## Sobe o núcleo (Neo4j, MinIO, carga, API)
+up: ## Sobe o núcleo (Neo4j, LocalStack S3, carga, API)
 	$(COMPOSE) --profile core up --build -d
 
 up-all: ## Núcleo + observabilidade (Jaeger, Prometheus)
@@ -60,7 +60,7 @@ logs: ## Acompanha os logs
 ps: ## Estado dos serviços
 	$(COMPOSE) $(ALL_PROFILES) ps -a
 
-seed: ## Regera o dataset, recarrega o grafo e publica artefatos no MinIO
+seed: ## Regera o dataset, recarrega o grafo e publica artefatos no S3 local (LocalStack)
 	$(COMPOSE) --profile core run --rm seed
 
 clean: ## Remove containers, volumes e arquivos gerados

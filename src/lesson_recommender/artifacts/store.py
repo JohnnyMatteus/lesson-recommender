@@ -2,8 +2,8 @@
 
 Porta `ArtifactStore` com dois adaptadores:
 - `LocalArtifactStore`: diretório local (padrão; testes e uso sem infraestrutura);
-- `S3ArtifactStore`: qualquer serviço compatível com S3. Localmente aponta para o MinIO do
-  docker-compose; na AWS, basta trocar endpoint e credenciais (ver ADR 0008).
+- `S3ArtifactStore`: qualquer serviço compatível com S3. Localmente aponta para o LocalStack do
+  docker-compose; na AWS, basta trocar endpoint e credenciais (ver ADR 0008 e ADR 0010).
 """
 
 from __future__ import annotations
@@ -72,9 +72,13 @@ def build_s3_client(endpoint_url: str | None, access_key: str, secret_key: str, 
         raise ConfigurationError(
             "backend 's3' requer o extra: pip install 'lesson-recommender[s3]'"
         ) from error
+    from botocore.config import Config
+
     return boto3.client(
         "s3",
         endpoint_url=endpoint_url or None,
+        # Path-style com endpoint próprio (LocalStack): não há DNS de subdomínio por bucket.
+        config=Config(s3={"addressing_style": "path"}) if endpoint_url else None,
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
         region_name=region,
